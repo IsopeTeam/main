@@ -1,7 +1,10 @@
 #READ THIS BEFORE YOU DO ANYTHING
 
-## Script 1
+## Related to Nex SynaptiQS
 
-## Script 2
+For now open WinWCP files, display, average data.
+Planned: a module for filtering data, calculate amps
 
-##Blablablalb
+
+
+
