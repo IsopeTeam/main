@@ -1,6 +1,6 @@
 #READ THIS BEFORE YOU DO ANYTHING
 
-## New SynaptiPS: SimplGUI4
+## New SynaptiPS: SimpleGUI4
 
 For now open WinWCP files.
 Features: display files, superimposed traces, leak average, smooth traces, calculate amplitudes for 1 or 3 peaks, define cursors, fit exponential 
