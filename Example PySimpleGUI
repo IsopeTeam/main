@@ -1,0 +1,46 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Apr 29 10:52:05 2020
+
+@author: Phippe.ISOPE
+"""
+import numpy as np
+from matplotlib import pyplot as plt
+import PySimpleGUI as sg
+
+
+t = np.arange(0.0, 5.0, 0.01)
+s = np.cos(2*np.pi*t)
+s2 = np.sin(2*np.pi*t)
+fig, ax = plt.subplots()
+
+sg.theme('Black')	
+ 
+layout = [  [sg.Text('Display trace')],
+            [sg.Button('Previous Trace'),sg.Button('Next Trace'),sg.Button('Clear')],
+            [sg.Text('Say bye'), sg.InputText(default_text="0")]]
+
+
+window = sg.Window('Display Superimposed Traces', layout,location=(0,0))
+
+
+while True:
+    
+    event, values = window.read()
+    
+    if event in (None, 'Close'):	# if user closes window or clicks cancel
+        break
+
+    if event == "Next Trace":
+        line, = ax.plot(t, s, lw=2)
+        plt.draw()
+ 
+    if event == "Previous Trace":
+        line, = ax.plot(t, s2, lw=2)
+        plt.draw()
+              
+    if event == "Clear":
+        print (values[0])
+        ax.clear()
+  
+window.close()
