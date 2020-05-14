@@ -42,19 +42,13 @@ def Fit_single_trace(Trace, Time_trace, x_start,x_end):
     y = Trace[idx_start:idx_stop]
     x2=np.array(np.squeeze(x))
     y2=np.array(np.squeeze(y))  
-     
-    fig_ft=plt.figure()
-    ax_fit = fig_ft.add_subplot(111)
-    ax_fit.plot(Time_trace, Trace, color = 'green', alpha = 1, lw = '2')
-#    ax_fit.plot(x2,y2,color = 'black', alpha = 1, lw = '1')
-     
+    
     param_bounds=([-np.inf,0.,0.,-1000.],[np.inf,1.,1.,1000.])      # be careful ok for seconds. If millisec change param 2 and 3
     popt, pcov = curve_fit(func_mono_exp, x2, y2,bounds=param_bounds) 
-   
-    ax_fit.plot(x, func_mono_exp(x2, *popt), color = 'red', alpha = 1, lw = '3')
-    print ('a * np.exp(-(x-b)/c) + d', popt)
-    print ('tau decay =',popt[2]*1000, ' ms' )
-    return popt[2], popt
+
+#    print ('a * np.exp(-(x-b)/c) + d', popt)
+#    print ('tau decay =',popt[2]*1000, ' ms' )
+    return popt[2], popt, idx_start, idx_stop
 
 
 def func_mono_exp(x, a, b, c, d):
@@ -79,8 +73,8 @@ def load_wcp(file_wcp):
     for episode in bl.segments :
         time = episode.analogsignals[0].times #The time vector
         TIME.append(time)
-        rec = episode.analogsignals[0].magnitude#The signal vector 
-        REC.append(rec)  #  -leak) #We extract the signal minus the offset
+        rec = episode.analogsignals[0].magnitude #The signal vector 
+        REC.append(rec) 
     global sampling
     sampling=float(TIME[1][1])*1000  #sampling rate in ms
         
@@ -90,6 +84,25 @@ def load_folder(path):
     for i in range(len(list_file)):
        load_wcp(list_file[i])
   
+def load_xls(file_xls):  
+    df=pd.read_excel (file_xls, header = 0)
+    print(df)
+    for i in range(len(df.columns)):
+        if 'Time' == df.columns[i]:
+            timescale=df.iloc[:,i].values
+            TIME.append(timescale)
+        else:
+            sweep=df.iloc[:,i].values
+            REC.append(sweep)
+    print (REC)    
+    for i in range(len(REC)-1):    # this to get the same size of matrix between REC and TIME 
+        TIME.append(timescale)
+     
+    global sampling
+    sampling=float(TIME[1][1])*1000
+#    
+
+    
 ###############################
 ### DEF AVERAGE  ############
 ###############################
@@ -255,6 +268,7 @@ def Calculate_Amps():
                 
 
             if event3 == "All Peaks from Trains":
+                global amp_dict
                 amp_dict = {}
                 for i in range(int(values3[2])):
                     amp_dict['AMP' + str(i+1)] = []
@@ -271,7 +285,8 @@ def Calculate_Amps():
                                 amp_dict[key].append(calc_max_in_trace(REC[i],float(Start_for_trains), float(Stop_for_trains),int(values3[3])))
                     Start_for_trains+=float(values3[1])/1000
                     Stop_for_trains+=float(values3[1])/1000
-         
+                
+                print (amp_dict)
                 fig4 = plt.figure()
                 ax4 = fig4.add_subplot(111)
                 for key in amp_dict.keys():
@@ -292,21 +307,25 @@ def Calculate_Amps():
             pass
     window3.close()
 
- 
-
+""" 
 ###########################
-## MAIN SCRIPT   ##########
+##   MAIN SCRIPT       ####
 ###########################
-    
+   
 ###########################
 ##   lOAD FILE WINDOW  ####
 ###########################
+"""
 
 sg.theme('DarkBlue')	
+
 layout0= [  [sg.Text('Enter File name'), sg.InputText(), sg.FileBrowse()],
             [sg.Button('Start File')],
             [sg.Text('Enter Folder name'), sg.InputText(), sg.FolderBrowse()],
-            [sg.Button('Start Folder')]]
+            [sg.Button('Start Folder')],
+            [sg.Text('Enter xls file'), sg.InputText(), sg.FileBrowse()],
+            [sg.Button('Start xls')]]
+
 window0= sg.Window('Load files', layout0, location=(0,0))
 
 while True:
@@ -320,15 +339,21 @@ while True:
         if event0 == 'Start Folder':
             load_folder(values0[1])
             break
+        if event0 == 'Start xls':
+            load_xls(values0[2])
+            break
+        
     except:
         pass
     
 window0.close()    
 
-#############################
-#### MAIN WINDOW  ###########
-#############################
 
+"""
+###########################
+##   MAIN WINDOW       ####
+###########################
+"""
 
 sg.theme('SandyBeach')	
 
@@ -346,10 +371,10 @@ layout1 = [ [sg.Button('Start'),sg.Button('Previous Trace'),sg.Button('Next Trac
             [sg.Button('Calculate Amps')],
             [sg.Text('_'*30)],
             [sg.Button('Fit current trace'),sg.Button('Fit all traces'), sg.Button('Fit average')],
-            [sg.Button('Fit current train'),sg.Button('Fit all trains'),sg.Text('Peak number'),sg.InputText(default_text="3", size=(10, 1)),sg.Text('ISI (ms)'), sg.InputText(default_text="50", size=(10, 1))]]
+            [sg.Button('Fit current train'),sg.Button('Fit all trains'),sg.Text('Peak number'),sg.InputText(default_text="3", size=(10, 1)),sg.Text('ISI (ms)'), sg.InputText(default_text="50", size=(10, 1))],
+            [sg.Button('Correct Amps in Trains')]]
 
-
-window1 = sg.Window('Browse Traces', layout1, location=(0,0))
+window1 = sg.Window('Browse Traces', layout1, location=(0,0), resizable=True, finalize=True)
 
 episode=0
 
@@ -490,48 +515,104 @@ while True:
             Calculate_Amps()
             
         if event == 'Fit current trace':    
-            Fit_single_trace(REC[episode], TIME[episode],startpos[0],endpos[0])
+            local_tau, local_popt, idxstart, idxstop = Fit_single_trace(REC[episode], TIME[episode],startpos[0],endpos[0])
+            x=TIME[episode][idxstart:idxstop]
+            x2=np.array(np.squeeze(x))
+            fig_fit=plt.figure()
+            ax_fit = fig_fit.add_subplot(111)
+            ax_fit.plot(TIME[episode], REC[episode], color = 'green', alpha = 1, lw = '2')
+            ax_fit.plot(x2, func_mono_exp(x2, *local_popt), color = 'black', alpha = 1, lw = '3')
+            print ('tau decay episode'+str(episode)+' =',local_popt[2]*1000, ' ms' )
             
         if event == 'Fit all traces':    
             All_Tau=[]
             All_popt=[]
             for i in range(len(REC)): 
                 if TAG[i] == 1:
-                    local_tau, local_popt = Fit_single_trace(REC[i], TIME[i],startpos[0],endpos[0])
+                    local_tau, local_popt, idxstart, idxstop = Fit_single_trace(REC[i], TIME[i],startpos[0],endpos[0])
                     All_Tau.append(local_tau)
                     All_popt.append(local_popt)
                 else:
                     pass
-            data = {'Tau': np.array(All_Tau), 'popt': All_popt}
+            data = {'Tau': np.array(All_Tau)}
             df = pd.DataFrame.from_dict(data)
             writer = pd.ExcelWriter('All Tau.xlsx')
             df.to_excel(writer)
             writer.save() 
                        
         if event == 'Fit average':    
-            Fit_single_trace(AVERAGE, TIME[0],startpos[0],endpos[0])    
+            local_tau, local_popt, idxstart, idxstop = Fit_single_trace(AVERAGE, TIME[0],startpos[0],endpos[0])
+            x=TIME[episode][idxstart:idxstop]
+            x2=np.array(np.squeeze(x))
+            fig_fit=plt.figure()
+            ax_fit = fig_fit.add_subplot(111)
+            ax_fit.plot(TIME[0], AVERAGE, color = 'green', alpha = 1, lw = '2')
+            ax_fit.plot(x2, func_mono_exp(x2, *local_popt), color = 'black', alpha = 1, lw = '3')
+            print ('tau decay average'+str(episode)+' =',local_popt[2]*1000, ' ms' )
                 
         if event == 'Fit current train':  
-            FitPeaks_dict = {}
-            for i in range(int(values[6])):
-                FitPeaks_dict['FIT' + str(i+1)] = []
-            locals().update(FitPeaks_dict)    
+            FitPeaks_dict_tau = {}
+            FitPeaks_dict_popt = {}
             Start_for_trains=startpos[0]
             Stop_for_trains=endpos[0]
-            for key in FitPeaks_dict.keys():                          
-                local_tau, local_popt = Fit_single_trace(REC[episode], TIME[episode],Start_for_trains,Stop_for_trains)
-                FitPeaks_dict[key].append(local_popt)
+            
+            fig_fit=plt.figure()
+            ax_fit = fig_fit.add_subplot(111)
+            ax_fit.plot(TIME[episode], REC[episode], color = 'green', alpha = 1, lw = '2')
+            
+            for i in range(int(values[6])):
+                local_tau, local_popt, idxstart, idxstop = Fit_single_trace(REC[episode], TIME[episode],Start_for_trains,Stop_for_trains)
+                FitPeaks_dict_tau['FIT_ep'+str(episode)+'_'+str(i+1)] = local_tau
+                FitPeaks_dict_popt['FIT_ep' + str(episode)+'_pk'+str(i+1)] = local_popt
+                locals().update(FitPeaks_dict_tau)  
+                locals().update(FitPeaks_dict_popt) 
                 Start_for_trains+=float(values[7])/1000
                 Stop_for_trains+=float(values[7])/1000
-            print(FitPeaks_dict)
-            df = pd.DataFrame.from_dict(FitPeaks_dict)
-            writer = pd.ExcelWriter('Fit peaks.xlsx')
+                
+                x=TIME[episode][idxstart:idxstop]
+                x2=np.array(np.squeeze(x))
+                ax_fit.plot(x2, func_mono_exp(x2, *local_popt), color = 'black', alpha = 1, lw = '3')
+            
+            print ('tau decay ep'+str(episode)+' =',FitPeaks_dict_tau)     
+        
+            
+        if event == 'Fit all trains':  
+            FitPeaks_dict_tau = {}
+            FitPeaks_dict_popt = {}
+            for i in range(int(values[6])):
+                FitPeaks_dict_tau['AMP' + str(i+1)] = []
+                FitPeaks_dict_popt['AMP' + str(i+1)] = []
+            locals().update(amp_dict)    
+            Start_for_trains=startpos[0]
+            Stop_for_trains=endpos[0]
+            for key in FitPeaks_dict_popt.keys():
+                for i in range(len(REC)):
+                    if TAG[i] == 1: 
+                        local_tau, local_popt, idxstart, idxstop = Fit_single_trace(REC[i], TIME[i],Start_for_trains,Stop_for_trains)
+                        FitPeaks_dict_tau[key].append(local_tau)
+                        FitPeaks_dict_popt[key].append(local_popt) 
+                        locals().update(FitPeaks_dict_tau) 
+                        locals().update(FitPeaks_dict_popt)
+                    else:
+                        pass
+                Start_for_trains+=float(values[7])/1000
+                Stop_for_trains+=float(values[7])/1000
+
+            print (FitPeaks_dict_popt)    
+            df = pd.DataFrame.from_dict(FitPeaks_dict_tau)
+            writer = pd.ExcelWriter('Fit peaks dict tau.xlsx')
             df.to_excel(writer)
             writer.save() 
+            df2 = pd.DataFrame.from_dict(FitPeaks_dict_popt)
+            writer = pd.ExcelWriter('Fit peaks dict popt.xlsx')
+            df2.to_excel(writer)
+            writer.save() 
+    
             
-        if event == 'Fit all trains':    
-            Fit_single_trace(REC[episode], TIME[episode],startpos[0],endpos[0])     
+        if event == 'Correct Amps in Trains':
             
+            pass
+                         
     except:
         sg.popup_error('')
         pass
