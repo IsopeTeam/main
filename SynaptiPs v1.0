@@ -18,8 +18,8 @@ import pandas as pd
 
 TIME, REC, Saved_REC,Saved_REC2,Subtracted_REC, pos = [],[],[],[],[],[]
 AMP, AMP1, AMP2, AMP3 = [], [], [], []
-#startpos, endpos = [],[]
-
+#startpos, endpos = [0],[0]
+savedir=r'C:\Users\Phippe.ISOPE\Documents\DATA'
 ###############################
 ## DEF GET COORDINATE CURSORS #
 ###############################
@@ -43,13 +43,19 @@ def Fit_single_trace(Trace, Time_trace, x_start,x_end):
     x2=np.array(np.squeeze(x))
     y2=np.array(np.squeeze(y))  
     
-    param_bounds=([-np.inf,0.,0.,-1000.],[np.inf,1.,1.,1000.])      # be careful ok for seconds. If millisec change param 2 and 3
-    popt, pcov = curve_fit(func_mono_exp, x2, y2,bounds=param_bounds) 
-
-#    print ('a * np.exp(-(x-b)/c) + d', popt)
-#    print ('tau decay =',popt[2]*1000, ' ms' )
-    return popt[2], popt, idx_start, idx_stop
-
+    try:
+        param_bounds=([-np.inf,0.,0.,-1000.],[np.inf,1.,1.,1000.])      # be careful ok for seconds. If millisec change param 2 and 3
+        popt, pcov = curve_fit(func_mono_exp, x2, y2,bounds=param_bounds) 
+    
+    #    print ('a * np.exp(-(x-b)/c) + d', popt)
+    #    print ('tau decay =',popt[2]*1000, ' ms' )
+        return popt[2], popt, idx_start, idx_stop
+    except:
+        print ('Fit failed')
+        popt[2]=float('nan')
+        popt=float('nan')
+        return popt[2], popt, idx_start, idx_stop
+        pass
 
 def func_mono_exp(x, a, b, c, d):
     return a * np.exp(-(x-b)/c) + d
@@ -158,6 +164,12 @@ def superimposed(episode):
             if event2 == "Next Trace":
                 episode+=1
                 ax.plot(TIME[episode], REC[episode])
+                try:
+                    ax.axvline(startpos[0], color ='r')
+                    ax.axvline(endpos[0], color ='g')
+                    fig.canvas.draw()
+                except:
+                    pass
                 plt.xlabel('Time (s)')
                 plt.ylabel('Signal (Amp)')
                 plt.title('Episode: '+str(episode))
@@ -166,6 +178,12 @@ def superimposed(episode):
             if event2 == "Previous Trace":
                 episode-=1
                 ax.plot(TIME[episode], REC[episode])
+                try:
+                    ax.axvline(startpos[0], color ='r')
+                    ax.axvline(endpos[0], color ='g')
+                    fig.canvas.draw()
+                except:
+                    pass
                 plt.xlabel('Time (s)')
                 plt.ylabel('Signal (Amp)')
                 plt.title('Episode: '+str(episode))
@@ -204,18 +222,20 @@ def calc_min_in_trace(trace, win1, win2, Win_for_extremum):
     stop_idx = np.ravel(np.where(TIME[0] >= win2))[0]
     MIN = np.min(trace[start_idx:stop_idx])
     sub_trace=trace[start_idx:stop_idx]
-    MIN_index = np.argmin(sub_trace)
-    MIN = np.mean(sub_trace[MIN_index-Win_for_extremum:MIN_index+Win_for_extremum])
-    return MIN
+    MIN_sub_trace_idx = np.argmin(sub_trace)
+    MIN = np.mean(trace[start_idx+MIN_sub_trace_idx-Win_for_extremum:start_idx+MIN_sub_trace_idx+Win_for_extremum])
+    MIN_idx=start_idx+MIN_sub_trace_idx
+    return MIN, MIN_idx
 
 def calc_max_in_trace(trace, win1, win2, Win_for_extremum):
     start_idx = np.ravel(np.where(TIME[0] >= win1))[0]
     stop_idx = np.ravel(np.where(TIME[0] >= win2))[0]
     MAX = np.max(trace[start_idx:stop_idx])
     sub_trace=trace[start_idx:stop_idx]
-    MAX_index = np.argmax(sub_trace)
-    MAX = np.mean(sub_trace[MAX_index-Win_for_extremum:MAX_index+Win_for_extremum])
-    return MAX
+    MAX_sub_trace_idx = np.argmax(sub_trace)
+    MAX = np.mean(trace[start_idx+MAX_sub_trace_idx-Win_for_extremum:start_idx+MAX_sub_trace_idx+Win_for_extremum])
+    MAX_idx=start_idx+MAX_sub_trace_idx
+    return MAX,MAX_idx
 
 
 def Calculate_Amps():
@@ -244,34 +264,44 @@ def Calculate_Amps():
                 break
             
             if event3 == "One Peak from Cursors":
-                AMP = []
+                global amp_dict, amp_dict_idx
+                amp_dict = {}
+                amp_dict_idx = {}
+                amp_dict['AMP1'] = []
+                amp_dict_idx['AMP1'] = []
+                locals().update(amp_dict)
                 for i in range(len(REC)):
                     if values3[0] == True:
                         if TAG[i] == 1:
-                            AMP.append(calc_min_in_trace(REC[i], startpos[0], endpos[0], int(values3[3])))
-                            
+                            local_amp, local_amp_idx =calc_min_in_trace(REC[i], startpos[0], endpos[0], int(values3[3]))
+                            amp_dict['AMP1'].append(local_amp)
+                            amp_dict_idx['AMP1'].append(local_amp_idx)
                     else:
                         if TAG[i] == 1:
-                            AMP.append(calc_max_in_trace(REC[i], startpos[0], endpos[0], int(values3[3])))
- 
+                            local_amp, local_amp_idx =calc_max_in_trace(REC[i], startpos[0], endpos[0], int(values3[3]))
+                            amp_dict['AMP1'].append(local_amp) 
+                            amp_dict_idx['AMP1'].append(local_amp_idx)
+                
                 fig4 = plt.figure()
                 ax4 = fig4.add_subplot(111)
-                ax4.plot(AMP)
+                ax4.plot(amp_dict['AMP1'])
                 plt.xlabel('Number episodes')
                 plt.ylabel('Signal (Amp)')
-                plt.title('Amplitude Timecourse')
-                data = {'Amp': np.array(AMP)}
-                df = pd.DataFrame.from_dict(data)
-                writer = pd.ExcelWriter(str(values3[4])+'.xlsx')
+                plt.title('Amplitude Timecosurse')
+                
+                df = pd.DataFrame.from_dict(amp_dict)
+                writer = pd.ExcelWriter('{}\{}.xlsx'.format(savedir,str(values3[4])))
                 df.to_excel(writer)
                 writer.save() 
                 
 
             if event3 == "All Peaks from Trains":
-                global amp_dict
                 amp_dict = {}
+                amp_dict_idx = {}
+                
                 for i in range(int(values3[2])):
                     amp_dict['AMP' + str(i+1)] = []
+                    amp_dict_idx['AMP' + str(i+1)] = []
                 locals().update(amp_dict)    
                 Start_for_trains=startpos[0]
                 Stop_for_trains=endpos[0]
@@ -279,10 +309,15 @@ def Calculate_Amps():
                     for i in range(len(REC)):
                         if values3[0] == True:
                             if TAG[i] == 1:
-                                amp_dict[key].append(calc_min_in_trace(REC[i],float(Start_for_trains), float(Stop_for_trains),int(values3[3])))
+                                local_amp, local_amp_idx =calc_min_in_trace(REC[i],float(Start_for_trains), float(Stop_for_trains),int(values3[3]))
+                                amp_dict[key].append(local_amp)
+                                amp_dict_idx[key].append(local_amp_idx)
                         else:
                             if TAG[i] == 1:
-                                amp_dict[key].append(calc_max_in_trace(REC[i],float(Start_for_trains), float(Stop_for_trains),int(values3[3])))
+                                local_amp, local_amp_idx =calc_max_in_trace(REC[i],float(Start_for_trains), float(Stop_for_trains),int(values3[3]))
+                                amp_dict[key].append(local_amp)
+                                amp_dict_idx[key].append(local_amp_idx)
+                   
                     Start_for_trains+=float(values3[1])/1000
                     Stop_for_trains+=float(values3[1])/1000
                 
@@ -297,7 +332,7 @@ def Calculate_Amps():
                 plt.title('Amplitude Timecourse')    
              
                 df = pd.DataFrame.from_dict(amp_dict)
-                writer = pd.ExcelWriter(str(values3[4])+'.xlsx')
+                writer = pd.ExcelWriter('{}\{}.xlsx'.format(savedir,str(values3[4])))
                 df.to_excel(writer)
                 writer.save()
                 
@@ -319,12 +354,9 @@ def Calculate_Amps():
 
 sg.theme('DarkBlue')	
 
-layout0= [  [sg.Text('Enter File name'), sg.InputText(), sg.FileBrowse()],
-            [sg.Button('Start File')],
-            [sg.Text('Enter Folder name'), sg.InputText(), sg.FolderBrowse()],
-            [sg.Button('Start Folder')],
-            [sg.Text('Enter xls file'), sg.InputText(), sg.FileBrowse()],
-            [sg.Button('Start xls')]]
+layout0= [  [sg.Text('Enter File name     '), sg.InputText(), sg.FileBrowse(),sg.Button('Start File')],
+            [sg.Text('Enter Folder name '), sg.InputText(), sg.FolderBrowse(),sg.Button('Start Folder')],
+            [sg.Text('Enter xls file          '), sg.InputText(), sg.FileBrowse(),sg.Button('Start xls')]]
 
 window0= sg.Window('Load files', layout0, location=(0,0))
 
@@ -372,15 +404,18 @@ layout1 = [ [sg.Button('Start'),sg.Button('Previous Trace'),sg.Button('Next Trac
             [sg.Text('_'*30)],
             [sg.Button('Fit current trace'),sg.Button('Fit all traces'), sg.Button('Fit average')],
             [sg.Button('Fit current train'),sg.Button('Fit all trains'),sg.Text('Peak number'),sg.InputText(default_text="3", size=(10, 1)),sg.Text('ISI (ms)'), sg.InputText(default_text="50", size=(10, 1))],
-            [sg.Button('Correct Amps in Trains')]]
+            [sg.Button('Correct Amps in Trains')],
+            [sg.Text('_'*30)],
+            [sg.Button('Change save Folder'), sg.InputText(default_text=savedir, size=(50, 1))]]
 
 window1 = sg.Window('Browse Traces', layout1, location=(0,0), resizable=True, finalize=True)
 
 episode=0
 
 plt.ion()
-fig = plt.figure()
+fig = plt.figure('Main Figure')
 ax = fig.add_subplot(111)
+
 
 TAG = np.zeros(len(REC))
 
@@ -433,8 +468,20 @@ while True:
                     ax.plot(TIME[episode], REC[episode], color ='r')
                 else:
                     ax.plot(TIME[episode], REC[episode])
-#                if AMP != None:
-#                    plt.plot.hlines(AMP[episode], xAMP[episode])
+                try:
+                    ax.axvline(startpos[0], color ='r')
+                    ax.axvline(endpos[0], color ='g')
+                    fig.canvas.draw()
+                except:
+                    pass
+                try:
+                    for key in amp_dict.keys():  
+                        index=amp_dict_idx[key][episode]
+                        x=TIME[episode][index]
+                        y=amp_dict[key][episode]
+                        ax.plot(x,y,'bo', linewidth = 3)
+                except:
+                    pass
                 plt.xlabel('Time (s)')
                 plt.ylabel('Signal (Amp)')
                 plt.title('Episode '+str(episode)+'/'+str(len(REC)-1), fontweight="bold", fontsize=16, color="g")
@@ -447,6 +494,20 @@ while True:
                 ax.plot(TIME[episode], REC[episode], color ='r')
             else:
                 ax.plot(TIME[episode], REC[episode])
+            try:
+                ax.axvline(startpos[0], color ='r')
+                ax.axvline(endpos[0], color ='g')
+                fig.canvas.draw()
+            except:
+                pass
+            try:
+                for key in amp_dict.keys():  
+                    index=amp_dict_idx[key][episode]
+                    x=TIME[episode][index]
+                    y=amp_dict[key][episode]
+                    ax.plot(x,y,'bo', linewidth = 3)
+            except:
+                pass
             plt.xlabel('Time (s)')
             plt.ylabel('Signal (Amp)')
             plt.title('Episode '+str(episode)+'/'+str(len(REC)-1), fontweight="bold", fontsize=16, color="g")
@@ -485,7 +546,7 @@ while True:
 
         if event == "Save Tags":
             df = pd.DataFrame(TAG, columns=['Tags'])
-            writer = pd.ExcelWriter('Tags.xlsx')
+            writer = pd.ExcelWriter('{}\Tags.xlsx'.format(savedir))
             df.to_excel(writer, index = False)
             writer.save()
                         
@@ -494,7 +555,7 @@ while True:
         
         if event == "Save Average":
             df = pd.DataFrame(AVERAGE, columns=['Average'])
-            writer = pd.ExcelWriter(str(values[5])+'.xlsx')
+            writer = pd.ExcelWriter('{}\{}.xlsx'.format(savedir,str(values[5])))
             df.to_excel(writer, index = False)
             writer.save()
 
@@ -536,10 +597,10 @@ while True:
                     pass
             data = {'Tau': np.array(All_Tau)}
             df = pd.DataFrame.from_dict(data)
-            writer = pd.ExcelWriter('All Tau.xlsx')
+            writer = pd.ExcelWriter('{}\All Tau AMP1.xlsx'.format(savedir))
             df.to_excel(writer)
             writer.save() 
-                       
+                      
         if event == 'Fit average':    
             local_tau, local_popt, idxstart, idxstop = Fit_single_trace(AVERAGE, TIME[0],startpos[0],endpos[0])
             x=TIME[episode][idxstart:idxstop]
@@ -600,24 +661,61 @@ while True:
 
             print (FitPeaks_dict_popt)    
             df = pd.DataFrame.from_dict(FitPeaks_dict_tau)
-            writer = pd.ExcelWriter('Fit peaks dict tau.xlsx')
+            writer = pd.ExcelWriter('{}\Fit peaks dict tau.xlsx'.format(savedir))
             df.to_excel(writer)
             writer.save() 
             df2 = pd.DataFrame.from_dict(FitPeaks_dict_popt)
-            writer = pd.ExcelWriter('Fit peaks dict popt.xlsx')
+            writer = pd.ExcelWriter('{}\Fit peaks dict popt.xlsx'.format(savedir))
             df2.to_excel(writer)
             writer.save() 
+            
     
             
         if event == 'Correct Amps in Trains':
+            amp_dict_corr= {}
+            for i in range(int(values[6])):
+                amp_dict_corr['AMP' + str(i+1)] = []
+            locals().update(amp_dict)    
+            for key in amp_dict_corr.keys():
+                 for i in range(len(REC)):
+                    if TAG[i] == 1: 
+                        residual = func_mono_exp(amp_dict_idx[key][i], *FitPeaks_dict_popt[key][i])
+                        new_amp=amp_dict[key][i]-residual
+                        amp_dict_corr[key].append(new_amp)   
+                        
+            print (amp_dict_corr)
+            fig5 = plt.figure()
+            ax5 = fig5.add_subplot(111)
+            for key in amp_dict_corr.keys():
+                ax5.plot(amp_dict_corr[key], label = key)
+            ax5.legend()
+            plt.xlabel('Number episodes')
+            plt.ylabel('Signal (Amp)')
+            plt.title('Amplitude Timecourse')  
             
-            pass
-                         
+            df = pd.DataFrame.from_dict(amp_dict_corr)
+            writer = pd.ExcelWriter('{}\Amplitudes_corr.xlsx'.format(savedir))
+            df.to_excel(writer)
+            writer.save()
+            
+            
+        if event == 'Change save Folder':  
+            savedir=str(values[8])
+            
+            
     except:
         sg.popup_error('')
         pass
         
 window1.close()
+
+
+
+    
+    
+
+    
+
 
 
 
