@@ -8,7 +8,8 @@ For now open WinWCP files, folder with a list of WinWCP files and xls files.
     -superimposed traces  /
     -leak average  /
     -smooth traces  /
-    -calculate amplitudes for 1 to N peaks  /
+    -calculate amplitudes for 1 to N peaks and display on traces  /
+    -correct for residual current from previous peak  /
     -define cursors  /
     -fit exponential for the current trace, all traces and trains  /
 
