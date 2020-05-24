@@ -16,5 +16,6 @@ For now open WinWCP files, folder with a list of WinWCP files and xls files.
     In the pipeline: filter data, General fitting procedure, General Stats procedure
 
 
-
+In SynaptiPs v1.2 : one new window allowing to start a new analysis (no need to relaunch the script) /
+Save folder can be selected
 
