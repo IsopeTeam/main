@@ -83,7 +83,7 @@ class Tracker():
             else:
                 
                 data = plt.imread('{}/{}'.format(Path, file)).transpose(1,0,2)
-                data = data[:,1:-1,0]
+                data = data[:,1:,0]
                 self.LIST_FRAME.append(data)
                 
         self.time_vector = np.arange(0, 1.0/self.sampling_rate*len(data[1]), 1.0/self.sampling_rate)
