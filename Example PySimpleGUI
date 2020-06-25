@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Apr 29 10:52:05 2020
-
-@author: Phippe.ISOPE
+This scriptis a copy from PySimpleGUI website 
+Please refer to 
+https://pysimplegui.readthedocs.io/en/latest/cookbook/
+https://pysimplegui.trinket.io/demo-programs#/matplotlib/matplotlib-plot-browser
 """
 import numpy as np
 from matplotlib import pyplot as plt
