@@ -6,6 +6,8 @@ Before starting Upgrade Matplotlib + pip install PySimpleGUI package
   Display files, superimposed traces, leak average, smooth trace, calculate amplitudes for 1 to N peaks and display on traces, correct  for  residual current from previous peak, define cursors, fit exponential for the current trace, all traces and trains
 ### In SynaptiPY v1.4 :
   Band-pass Filter added, new design
+### In SynaptiPY v1.5 :
+  Corrected bugs on residual subtraction, added residual subtraction for 1 train, added basics statistics for amplitudes measuremments in amplitude window
 # -- Basic statistics --
 A playground to analyze distributions using copy-paste (with headers) from an excel file
   
