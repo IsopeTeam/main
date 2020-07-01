@@ -7,7 +7,7 @@ Before starting Upgrade Matplotlib + pip install PySimpleGUI package
 ### In SynaptiPY v1.4 :
   Band-pass Filter added, new design
 ### In SynaptiPY v1.5 :
-  Corrected bugs on residual subtraction, added residual subtraction for 1 train, added basics statistics for amplitudes measuremments in amplitude window
+  Corrected bugs on residual subtraction, added residual subtraction for 1 train, added basic statistics for amplitudes measurements in amplitude window
 # -- Basic statistics --
 A playground to analyze distributions using copy-paste (with headers) from an excel file
   
