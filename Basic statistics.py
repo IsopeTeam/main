@@ -9,9 +9,14 @@ import numpy as np
 import seaborn as sns
 import pandas as pd
 import dabest
+import sys
 from matplotlib import pyplot as plt
 
 plt.close('all')
+
+sys.stdout = open('myFile.txt','w)'  # If you add this line at the beginning your script, 
+                                     # all the next print() objects will be save in the file 
+                                     # instead of being displayed in the console
 
 """
 From pandas library
