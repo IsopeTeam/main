@@ -14,7 +14,7 @@ from matplotlib import pyplot as plt
 
 plt.close('all')
 
-sys.stdout = open('myFile.txt','w)'  # If you add this line at the beginning your script, 
+sys.stdout = open('Basic_Stats.txt','w)'  # If you add this line at the beginning your script, 
                                      # all the next print() objects will be save in the file 
                                      # instead of being displayed in the console
 
